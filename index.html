@@ -633,6 +633,9 @@
             fechaPagoMensual: '',
             canon: 650000,
             pagado: false,
+            abono: 0,
+            saldoPendiente: 0,
+            acuerdoPago: '',
             soporte: '',
             soporteImg: '',
             fechaPagoReg: ''
@@ -1003,9 +1006,16 @@
             </div>
 
             <div class="amount-banner">
-              <span>Valor Recibido:</span>
-              <strong>${formatCOP(u.canon)} COP</strong>
+              <span>Valor Recibido / Abono:</span>
+              <strong>${formatCOP(u.abono > 0 ? u.abono : u.canon)} COP</strong>
             </div>
+            ${u.abono > 0 && u.abono < u.canon ? `
+              <div style="background:#fff7ed; border:1px solid #fed7aa; padding:8px 12px; border-radius:8px; margin-bottom:14px; font-size:0.85rem; display:flex; justify-content:space-between;">
+                <span>Canon Total: <strong>${formatCOP(u.canon)}</strong></span>
+                <span>Saldo Pendiente: <strong style="color:#d93025;">${formatCOP(u.canon - u.abono)}</strong></span>
+              </div>
+              ${u.acuerdoPago ? `<div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;"><strong>Acuerdo de Pago:</strong> ${u.acuerdoPago}</div>` : ''}
+            ` : ''}
 
             <div class="r-body">
               <div class="r-row">
