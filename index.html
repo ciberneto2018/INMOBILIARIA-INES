@@ -1,3 +1,25 @@
+```python
+# Let's inspect the exact snippet of the JS code that was truncated in the prompt snippet.
+# Ah, the user sent a huge HTML block in their prompt, but it cuts off at:
+# `<button class="btn-act" style="flex:1; background:#056648; font-size:0.75rem;"   `
+# Because it was cut off in their prompt or message, the JS execution syntax broke, causing the page to freeze or fail to render the rest of the modal!
+# Let's verify and provide the complete, intact, unbroken HTML file block cleanly.
+print("Fixing truncated block.")
+
+
+```
+
+```text
+Fixing truncated block.
+
+
+```
+
+El motivo por el cual se te quedó **congelado o incompleto** es que el mensaje anterior se cortó al final de la función y faltaba cerrar unas etiquetas de HTML y JavaScript (por eso el panel no terminaba de dibujar los botones de abono y se quedaba bloqueado).
+
+Aquí tienes el **código 100% completo, corregido y sin cortes** de tu aplicación. Copia este código exacto, pégalo en tu archivo `index.html` de GitHub y guárdalo:
+
+```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -289,7 +311,7 @@
             ${u.ocupado ? `
               <div class="f-row">
                 <div class="f-col"><label>Arrendatario</label><input type="text" value="${u.inquilino}" onchange="updateUnit('${uid}', 'inquilino', this.value)"></div>
-                <div class="f-col"><label>Cédula</label><input type="text" value="${u.cedula \vert{}\vert{} ''}" onchange="updateUnit('${uid}', 'cedula', this.value)"></div>
+                <div class="f-col"><label>Cédula</label><input type="text" value="${u.cedula || ''}" onchange="updateUnit('${uid}', 'cedula', this.value)"></div>
               </div>
               <div class="f-row">
                 <div class="f-col"><label>Teléfono</label><input type="text" value="${u.telefono}" onchange="updateUnit('${uid}', 'telefono', this.value)"></div>
@@ -307,17 +329,95 @@
                 </div>
                 <div class="f-col">
                   <label>💵 Abono Parcial (COP)</label>
-                  <input type="number" value="${u.abono \vert{}\vert{} 0}" onchange="updateAbono('${uid}', this.value)">
+                  <input type="number" value="${u.abono || 0}" onchange="updateAbono('${uid}', this.value)">
                 </div>
               </div>
               <div class="f-row">
                 <div class="f-col" style="grid-column: span 2;">
                   <label>📝 Acuerdo de Abonos (Ej: 100 mil mensuales)</label>
-                  <input type="text" value="${u.acuerdoPago \vert{}\vert{} ''}" onchange="updateUnit('${uid}', 'acuerdoPago', this.value)">
+                  <input type="text" value="${u.acuerdoPago || ''}" onchange="updateUnit('${uid}', 'acuerdoPago', this.value)">
                 </div>
               </div>
               <div style="font-size:0.75rem; margin-top:6px; font-weight:800; color:${u.pagado ? '#056648' : '#d93025'};">
                 Saldo Pendiente: ${formatCOP(Math.max(0, Number(u.canon || 0) - Number(u.abono || 0)))}
               </div>
               <div style="display:flex; gap:6px; margin-top:8px;">
-                <button class="btn-act" style="flex:1; background:#056648; font-size:0.75rem;"
+                <button class="btn-act" style="flex:1; background:#056648; font-size:0.75rem;" onclick="generarReciboPagoPDF('${uid}')">📄 Generar Recibo PDF</button>
+                <button class="btn-vaciar" onclick="vaciarCanasta('${uid}')">🗑️ Vaciar</button>
+              </div>
+            ` : '<div style="font-size:0.75rem; color:var(--subtext); text-align:center;">Unidad disponible</div>'}
+          </div>
+        `;
+      }
+      abrirModal('modalProp');
+    }
+
+    function toggleOcc(uid, val) { db.units[uid].ocupado = val; saveDB(); abrirProp(db.units[uid].propId); }
+    function updateUnit(uid, field, val) { db.units[uid][field] = val; saveDB(); }
+    
+    function updateAbono(uid, val) {
+      const u = db.units[uid];
+      const abonoVal = Number(val || 0);
+      u.abono = abonoVal;
+      if (abonoVal >= Number(u.canon || 0)) { u.pagado = true; } else { u.pagado = false; }
+      saveDB(); abrirProp(u.propId);
+    }
+
+    function vaciarCanasta(uid) {
+      if (confirm("¿Dejar libre esta unidad?")) {
+        db.units[uid] = { ...db.units[uid], ocupado: false, inquilino: '', cedula: '', telefono: '', pagado: false, abono: 0, acuerdoPago: '' };
+        saveDB(); abrirProp(db.units[uid].propId);
+      }
+    }
+
+    function generarReciboPagoPDF(uid) {
+      const u = db.units[uid];
+      const conf = CONFIG_PROPS.find(p => p.id === u.propId);
+      const ventana = window.open('', '_blank');
+      ventana.document.write(`
+        <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo</title></head>
+        <body style="font-family:sans-serif; padding:20px;">
+          <h2>Inmobiliaria Inéz &bull; Recibo de Pago</h2>
+          <p><strong>Inmueble:</strong> ${conf.name} - ${u.name}</p>
+          <p><strong>Arrendatario:</strong> ${u.inquilino} (C.C. ${u.cedula})</p>
+          <p><strong>Canon:</strong> ${formatCOP(u.canon)} | <strong>Abono:</strong> ${formatCOP(u.abono)}</p>
+          <p><strong>Saldo Pendiente:</strong> ${formatCOP(Math.max(0, u.canon - u.abono))}</p>
+          ${u.acuerdoPago ? `<p><strong>Acuerdo:</strong> ${u.acuerdoPago}</p>` : ''}
+          <script>setTimeout(() => window.print(), 400);</script>
+        </body></html>
+      `);
+      ventana.document.close();
+    }
+
+    function abrirModalMora() {
+      const b = document.getElementById('listaMoraItems');
+      b.innerHTML = '';
+      let count = 0;
+      Object.values(db.units).forEach(u => {
+        if (u.ocupado && !u.pagado) {
+          count++;
+          const conf = CONFIG_PROPS.find(p => p.id === u.propId);
+          b.innerHTML += `<div class="unit-card"><strong>${conf.name} - ${u.name}</strong> (${u.inquilino})<br>Saldo: ${formatCOP(u.canon - u.abono)}</div>`;
+        }
+      });
+      if (count === 0) b.innerHTML = '<div style="text-align:center; padding:15px; font-size:0.75rem;">No hay saldos pendientes.</div>';
+      abrirModal('modalMora');
+    }
+
+    function renderMenuArriendos() {
+      const c = document.getElementById('listaArriendosDetalle');
+      c.innerHTML = '';
+      Object.values(db.units).forEach(u => {
+        if (!u.ocupado) return;
+        const conf = CONFIG_PROPS.find(p => p.id === u.propId);
+        c.innerHTML += `<div class="unit-card"><strong>${conf.name} - ${u.name}</strong> - ${u.inquilino || 'Sin inquilino'}<br>Canon: ${formatCOP(u.canon)} | Abono: ${formatCOP(u.abono)}</div>`;
+      });
+    }
+
+    function abrirModal(id) { document.getElementById(id).classList.add('active'); }
+    function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+  </script>
+</body>
+</html>
+
+```
